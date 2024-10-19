@@ -12,45 +12,53 @@ out vec3 color;
 
 // Values that stay constant for the whole mesh
 uniform sampler2D myTextureSampler;
+uniform mat4 MV;
 uniform vec3 LightPosition_worldspace;
-uniform bool specularDiffuseOn;
 
-void main(){
+// New uniform to control whether specular and diffuse are enabled
+uniform bool isSpecularAndDiffuseEnabled;
+
+void main() {
 
     // Light emission properties
-    vec3 LightColor = vec3(1,1,1);
+    vec3 LightColor = vec3(1, 1, 1);
     float LightPower = 50.0f;
 
     // Material properties
-    vec3 MaterialDiffuseColor = texture( myTextureSampler, UV ).rgb;
-    vec3 MaterialAmbientColor = vec3(0.1,0.1,0.1) * MaterialDiffuseColor;
-    vec3 MaterialSpecularColor = vec3(0.3,0.3,0.3);
+    vec3 MaterialDiffuseColor = texture(myTextureSampler, UV).rgb;
+    vec3 MaterialAmbientColor = vec3(0.2, 0.2, 0.2) * MaterialDiffuseColor;
+    vec3 MaterialSpecularColor = vec3(0.3, 0.3, 0.3);
 
     // Distance to the light
-    float distance = length( LightDirection_cameraspace );
+    float distance = length(LightPosition_worldspace - Position_worldspace);
 
-    // Normalization of vectors
-    vec3 n = normalize( Normal_cameraspace );
-    vec3 l = normalize( LightDirection_cameraspace );
-    float cosTheta = clamp( dot( n, l ), 0,1 );
+    // Normal of the computed fragment, in camera space
+    vec3 n = normalize(Normal_cameraspace);
 
+    // Direction of the light (from the fragment to the light)
+    vec3 l = normalize(LightDirection_cameraspace);
+
+    // Cosine of the angle between the normal and the light direction
+    float cosTheta = clamp(dot(n, l), 0, 1);
+
+    // Eye vector (towards the camera)
     vec3 E = normalize(EyeDirection_cameraspace);
-    vec3 R = reflect(-l,n);
-    float cosAlpha = clamp( dot( E, R ), 0,1 );
 
-    // Ambient component
-    vec3 ambient = MaterialAmbientColor;
+    // Direction in which the triangle reflects the light
+    vec3 R = reflect(-l, n);
 
-    // Diffuse and specular components
-    vec3 diffuse = vec3(0.0);
-    vec3 specular = vec3(0.0);
+    // Cosine of the angle between the Eye vector and the Reflect vector
+    float cosAlpha = clamp(dot(E, R), 0, 1);
 
-    if (specularDiffuseOn) {
-        // Diffuse component
-        diffuse = MaterialDiffuseColor * LightColor * LightPower * cosTheta / (distance * distance);
-        // Specular component
-        specular = MaterialSpecularColor * LightColor * LightPower * pow(cosAlpha,5) / (distance * distance);
+    // Start with ambient lighting (it is always enabled)
+    color = MaterialAmbientColor;
+
+    // Check if specular and diffuse lighting are enabled
+    if (isSpecularAndDiffuseEnabled) {
+        // Add diffuse lighting
+        color += MaterialDiffuseColor * LightColor * LightPower * cosTheta / (distance * distance);
+
+        // Add specular lighting
+        color += MaterialSpecularColor * LightColor * LightPower * pow(cosAlpha, 5) / (distance * distance);
     }
-
-    color = ambient + diffuse + specular;
 }
